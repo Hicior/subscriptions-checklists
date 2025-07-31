@@ -1,0 +1,178 @@
+---
+alwaysApply: true
+---
+
+## MANDATORY RULES
+
+- All excel files should be saved/updated in the "ExcelFiles" folder.
+
+
+## Main Excel File structure
+
+File name: "Baza subskrypcji - checklisty.xlsx"
+Location: "ExcelFiles" folder
+
+### Sheet name: "CalendeskSubs"
+
+Table: CalendeskSubsTable
+Columns:
+- ID Subskrypcji Klienta
+- ID Subskrypcji
+- Status
+- Data zakupu
+- Pakiet
+- Data wygaśnięcia
+- Data anulowania
+- ID Klienta
+- Imię i Nazwisko Klienta
+- Email
+- Typ pakietu
+- ID Suba STRIPE
+- NIP
+- Nazwa Firmy
+- Telefon
+- Invoice status in chosen month (custom function required)
+    Current Excel function: "=IF(
+  [@[ID Suba STRIPE]]="";
+  "Nie można określić";
+  IF(
+    [@[Typ pakietu]]="miesięczny";
+    IFERROR(
+      INDEX(
+        FILTER(
+          InvoicesTable[Status Faktury];
+          (InvoicesTable[ID_Subskrypcji]=[@[ID Suba STRIPE]]) *
+          (MONTH(InvoicesTable[Data Utworzenia])=6) *
+          (YEAR(InvoicesTable[Data Utworzenia])=2025)
+        );
+        1
+      );
+      ""
+    );
+    IF(
+      [@[Typ pakietu]]="roczny";
+      IFERROR(
+        INDEX(
+          FILTER(
+            InvoicesTable[Status Faktury];
+            (InvoicesTable[ID_Subskrypcji]=[@[ID Suba STRIPE]]) *
+            (InvoicesTable[Data Utworzenia]>=DATE(2024;6;1)) *
+            (InvoicesTable[Data Utworzenia]<=DATE(2025;6;30))
+          );
+          1
+        );
+        ""
+      );
+      ""
+    )
+  )
+)"
+- Invoice status in last 2 months (custom function required)
+    Current Excel function: "=IF(
+  [@[ID Suba STRIPE]]="";
+  "Nie można określić";
+  IF(
+    [@[Typ pakietu]]="miesięczny";
+    IF(
+      COUNTIFS(
+        InvoicesTable[ID_Subskrypcji];[@[ID Suba STRIPE]];
+        InvoicesTable[Data Utworzenia];">="&DATE(2025;6;1);
+        InvoicesTable[Data Utworzenia];"<="&DATE(2025;7;31);
+        InvoicesTable[Status Faktury];"paid"
+      )>0;
+      "paid";
+      ""
+    );
+    IF(
+      [@[Typ pakietu]]="roczny";
+      IF(
+        COUNTIFS(
+          InvoicesTable[ID_Subskrypcji];[@[ID Suba STRIPE]];
+          InvoicesTable[Data Utworzenia];">="&DATE(2024;7;1);
+          InvoicesTable[Data Utworzenia];"<="&DATE(2025;7;31);
+          InvoicesTable[Status Faktury];"paid"
+        )>0;
+        "paid";
+        ""
+      );
+      ""
+    )
+  )
+)"
+- Last invoice month (custom function required)
+    Current Excel function = "=IFERROR(
+  TEXT(
+    MAX(
+      FILTER(
+        InvoicesTable[Data Utworzenia];
+        (InvoicesTable[ID_Subskrypcji]=[@[ID Suba STRIPE]]) *
+        (InvoicesTable[Status Faktury]="paid") *
+        IF(
+          [@[Typ pakietu]]="miesięczny";
+          YEAR(InvoicesTable[Data Utworzenia])=2025;
+          InvoicesTable[Data Utworzenia]>=DATE(2024;1;1)
+        )
+      )
+    );
+    "mmmm"
+  );
+  ""
+)"
+- Status3 (custom function required)
+    Current Excel function: "=IF(
+    AND(
+        [@[Data wygaśnięcia]] > NOW();
+        NOT(ISBLANK([@[Data wygaśnięcia]]));
+        NOT(ISBLANK([@[ID Subskrypcji Klienta]]))
+    );
+    "Anulowana (aktywna)";
+    IF(
+        AND(
+            OR([@[Data wygaśnięcia]] > NOW(); ISBLANK([@[Data wygaśnięcia]]));
+            NOT(ISBLANK([@[ID Subskrypcji Klienta]]))
+        );
+        "Aktywna";
+        IF(
+            AND(
+                [@[Data wygaśnięcia]] <= NOW();
+                NOT(ISBLANK([@[ID Subskrypcji Klienta]]))
+            );
+            "Anulowana";
+            "Nieokreślony"
+        )
+    )
+)"
+- Grupa (custom function in excel, handled by the user)
+- Grupa2 (custom function in excel, handled by the user)
+- Grupa3 (custom function in excel, handled by the user)
+
+### Sheet name: "SubIDs"
+
+Table: SubIDsTable
+Columns:
+- ID Suba (the same as "ID Subskrypcji" in "CalendeskSubs" sheet)
+- Pakiet
+- Grupa
+- Grupa2
+- Grupa3
+- Okres odnowienia
+- Cena brutto
+
+### Sheet name: "StripeInvoices"
+
+Table: InvoicesTable
+Columns:
+- ID_Faktury
+- Kwota Do Zapłaty
+- Kwota Zapłacona
+- Pozostało Do Zapłaty
+- Data Utworzenia
+- ID_Klienta
+- Pakiet
+- Sub Aktywny
+- Okres Odnowienia
+- ID_Subskrypcji
+- Liczba Pobrań Kwoty Do Zapłaty
+- ID_Payment_Intent
+- Status Faktury
+- Faktura Opłacona

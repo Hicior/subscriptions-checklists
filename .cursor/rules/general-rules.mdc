@@ -88,7 +88,7 @@ Columns:
       IF(
         COUNTIFS(
           InvoicesTable[ID_Subskrypcji];[@[ID Suba STRIPE]];
-          InvoicesTable[Data Utworzenia];">="&DATE(2024;7;1);
+          InvoicesTable[Data Utworzenia];">="&DATE(2024;6;1);
           InvoicesTable[Data Utworzenia];"<="&DATE(2025;7;31);
           InvoicesTable[Status Faktury];"paid"
         )>0;

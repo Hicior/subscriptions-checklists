@@ -1,0 +1,26 @@
+{
+  "date_settings": {
+    "invoice_status_chosen_month": {
+      "month": 6,
+      "year": 2025,
+      "yearly_subscription_start_year": 2024
+    },
+    "invoice_status_last_2_months": {
+      "month1": 6,
+      "month2": 7,
+      "year": 2025,
+      "yearly_subscription_start_year": 2024
+    },
+    "last_invoice_month": {
+      "current_year": 2025,
+      "yearly_subscription_start_year": 2024
+    }
+  },
+  "stripe_fetch_settings": {
+    "filter_date": {
+      "year": 2024,
+      "month": 6,
+      "day": 1
+    }
+  }
+}

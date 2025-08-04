@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import datetime
 import time
+import json
 from datetime import datetime as dt, timezone
 from tqdm import tqdm
 from openpyxl import load_workbook
@@ -11,6 +12,19 @@ import numpy as np
 # =============================================================================
 # CONFIGURATION AND API SETUP
 # =============================================================================
+
+# Load configuration from JSON file
+config_file_path = 'config.json'
+try:
+    with open(config_file_path, 'r', encoding='utf-8') as config_file:
+        config = json.load(config_file)
+    print("✅ Configuration loaded from config.json")
+except FileNotFoundError:
+    print("❌ Configuration file config.json not found. Please create the config.json file.")
+    exit()
+except json.JSONDecodeError as e:
+    print(f"❌ Error parsing config.json: {e}. Please fix the JSON syntax in the config file.")
+    exit()
 
 # API Keys
 calendesk_api_key = os.getenv('CALENDESK_API_KEY')
@@ -250,8 +264,9 @@ def validate_calendesk_data(data, endpoint_type):
 
 def fetch_stripe_invoices():
     """Fetch all Stripe invoices with pagination"""
-    # Calculate Unix timestamp for June 1st, 2024 (to get more historical data)
-    filter_date = dt(2025, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
+    # Get filter date from configuration
+    filter_config = config['stripe_fetch_settings']['filter_date']
+    filter_date = dt(filter_config['year'], filter_config['month'], filter_config['day'], 0, 0, 0, tzinfo=timezone.utc)
     filter_timestamp = int(filter_date.timestamp())
     
     params = {
@@ -495,11 +510,24 @@ else:
 # =============================================================================
 
 print("\n🔄 Calculating custom columns...")
+print(f"📅 Using configuration values:")
+print(f"   - Invoice status chosen month: {config['date_settings']['invoice_status_chosen_month']['month']}/{config['date_settings']['invoice_status_chosen_month']['year']}")
+print(f"   - Invoice status last 2 months: {config['date_settings']['invoice_status_last_2_months']['month1']}-{config['date_settings']['invoice_status_last_2_months']['month2']}/{config['date_settings']['invoice_status_last_2_months']['year']}")
+print(f"   - Last invoice month current year: {config['date_settings']['last_invoice_month']['current_year']}")
+print(f"   - Stripe filter from: {config['stripe_fetch_settings']['filter_date']['month']}/{config['stripe_fetch_settings']['filter_date']['year']}")
 
-def calculate_invoice_status_chosen_month(row, invoices_df, chosen_month=6, chosen_year=2025):
+def calculate_invoice_status_chosen_month(row, invoices_df, config_data=None):
     """Calculate invoice status for chosen month"""
     if pd.isna(row['ID Suba STRIPE']) or row['ID Suba STRIPE'] == '':
         return "Nie można określić"
+    
+    # Get configuration values
+    if config_data is None:
+        config_data = config['date_settings']['invoice_status_chosen_month']
+    
+    chosen_month = config_data['month']
+    chosen_year = config_data['year']
+    yearly_start_year = config_data['yearly_subscription_start_year']
     
     subscription_id = row['ID Suba STRIPE']
     package_type = row['Typ pakietu']
@@ -515,7 +543,7 @@ def calculate_invoice_status_chosen_month(row, invoices_df, chosen_month=6, chos
             return filtered_invoices.iloc[0]['Status Faktury']
     elif package_type == 'roczny':
         # Yearly subscription
-        start_date = dt(2024, chosen_month, 1)
+        start_date = dt(yearly_start_year, chosen_month, 1)
         end_date = dt(chosen_year, chosen_month, 30)
         filtered_invoices = invoices_df[
             (invoices_df['ID_Subskrypcji'] == subscription_id) &
@@ -527,10 +555,19 @@ def calculate_invoice_status_chosen_month(row, invoices_df, chosen_month=6, chos
     
     return ""
 
-def calculate_invoice_status_last_2_months(row, invoices_df, month1=6, month2=7, year=2025):
+def calculate_invoice_status_last_2_months(row, invoices_df, config_data=None):
     """Calculate invoice status for last 2 months"""
     if pd.isna(row['ID Suba STRIPE']) or row['ID Suba STRIPE'] == '':
         return "Nie można określić"
+    
+    # Get configuration values
+    if config_data is None:
+        config_data = config['date_settings']['invoice_status_last_2_months']
+    
+    month1 = config_data['month1']
+    month2 = config_data['month2']
+    year = config_data['year']
+    yearly_start_year = config_data['yearly_subscription_start_year']
     
     subscription_id = row['ID Suba STRIPE']
     package_type = row['Typ pakietu']
@@ -548,7 +585,7 @@ def calculate_invoice_status_last_2_months(row, invoices_df, month1=6, month2=7,
         return "paid" if not filtered_invoices.empty else ""
     elif package_type == 'roczny':
         # Yearly subscription
-        start_date = dt(2024, month2, 1)
+        start_date = dt(yearly_start_year, month2, 1)
         end_date = dt(year, month2, 31)
         filtered_invoices = invoices_df[
             (invoices_df['ID_Subskrypcji'] == subscription_id) &
@@ -560,13 +597,27 @@ def calculate_invoice_status_last_2_months(row, invoices_df, month1=6, month2=7,
     
     return ""
 
-def calculate_last_invoice_month(row, invoices_df, current_year=2025):
+def calculate_last_invoice_month(row, invoices_df, config_data=None):
     """Calculate last invoice month"""
     if pd.isna(row['ID Suba STRIPE']) or row['ID Suba STRIPE'] == '':
         return ""
     
+    # Get configuration values
+    if config_data is None:
+        config_data = config['date_settings']['last_invoice_month']
+    
+    current_year = config_data['current_year']
+    yearly_start_year = config_data['yearly_subscription_start_year']
+    
     subscription_id = row['ID Suba STRIPE']
     package_type = row['Typ pakietu']
+    
+    # Polish month names mapping
+    polish_months = {
+        1: 'styczeń', 2: 'luty', 3: 'marzec', 4: 'kwiecień',
+        5: 'maj', 6: 'czerwiec', 7: 'lipiec', 8: 'sierpień',
+        9: 'wrzesień', 10: 'październik', 11: 'listopad', 12: 'grudzień'
+    }
     
     filtered_invoices = invoices_df[
         (invoices_df['ID_Subskrypcji'] == subscription_id) &
@@ -579,12 +630,12 @@ def calculate_last_invoice_month(row, invoices_df, current_year=2025):
         ]
     elif package_type == 'roczny':
         filtered_invoices = filtered_invoices[
-            filtered_invoices['Data Utworzenia'] >= dt(2024, 1, 1)
+            filtered_invoices['Data Utworzenia'] >= dt(yearly_start_year, 1, 1)
         ]
     
     if not filtered_invoices.empty:
         max_date = filtered_invoices['Data Utworzenia'].max()
-        return max_date.strftime('%B').lower()  # Return month name in Polish would need translation
+        return polish_months.get(max_date.month, "")
     
     return ""
 

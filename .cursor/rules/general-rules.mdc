@@ -4,17 +4,26 @@ alwaysApply: true
 
 ## MANDATORY RULES
 
-- All excel files should be saved/updated in the "ExcelFiles" folder.
+- .env file is located in the root folder. You can't see it but it's there.
 
+## .env file variables
+
+*Azure App - MySharepointExcelUpdater*
+ApplicationID=your_application_id
+DirectoryID=your_directory_id
+SecretID=your_secret_id
+SecretValue=your_secret_value
+STRIPE_API_KEY=your_stripe_api_key
+CALENDESK_API_KEY=your_calendesk_api_key
 
 ## Main Excel File structure
 
-File name: "Baza subskrypcji - checklisty.xlsx"
-Location: "ExcelFiles" folder
+File name: "Status przekazanych klientów - Kraków - test.xlsx"
+Location: Sharepoint
 
-### Sheet name: "CalendeskSubs"
+### Sheet name: "Subskrypcje klientów" ID: {71D43EB5-BDB5-4475-8792-24810E03FF04}
 
-Table: CalendeskSubsTable
+Table: Subskrypcje
 Columns:
 - ID Subskrypcji Klienta
 - ID Subskrypcji
@@ -146,33 +155,14 @@ Columns:
 - Grupa2 (custom function in excel, handled by the user)
 - Grupa3 (custom function in excel, handled by the user)
 
-### Sheet name: "SubIDs"
+### Sheet name: "ID subów" ID: {44FC2DC5-B0D7-484E-9126-87CE4D7F5F01}
 
-Table: SubIDsTable
+Table: IDSubów
 Columns:
-- ID Suba (the same as "ID Subskrypcji" in "CalendeskSubs" sheet)
+- ID Suba (the same as "ID Subskrypcji" in "Subskrypcje klientów" sheet)
 - Pakiet
 - Grupa
 - Grupa2
 - Grupa3
 - Okres odnowienia
 - Cena brutto
-
-### Sheet name: "StripeInvoices"
-
-Table: InvoicesTable
-Columns:
-- ID_Faktury
-- Kwota Do Zapłaty
-- Kwota Zapłacona
-- Pozostało Do Zapłaty
-- Data Utworzenia
-- ID_Klienta
-- Pakiet
-- Sub Aktywny
-- Okres Odnowienia
-- ID_Subskrypcji
-- Liczba Pobrań Kwoty Do Zapłaty
-- ID_Payment_Intent
-- Status Faktury
-- Faktura Opłacona

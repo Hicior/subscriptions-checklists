@@ -442,14 +442,19 @@ calendesk_columns = {
 
 df_calendesk = df_calendesk[list(calendesk_columns.keys())].rename(columns=calendesk_columns)
 
-# Convert dates
+# Convert dates to datetime objects and remove timezone information (using working sample script approach)
+print("🔄 Converting dates...")
 df_calendesk['Data zakupu'] = pd.to_datetime(df_calendesk['Data zakupu']).dt.tz_localize(None) + pd.DateOffset(hours=2)
 df_calendesk['Data anulowania'] = pd.to_datetime(df_calendesk['Data anulowania'], errors='coerce').dt.tz_localize(None) + pd.DateOffset(hours=2)
 df_calendesk['Data wygaśnięcia'] = pd.to_datetime(df_calendesk['Data wygaśnięcia'], errors='coerce').dt.tz_localize(None) + pd.DateOffset(hours=2)
 
-# Update cancellation dates
-mask = df_calendesk['Data anulowania'].isna() & df_calendesk['Data wygaśnięcia'].notna()
-df_calendesk.loc[mask, 'Data anulowania'] = df_calendesk['Data wygaśnięcia']
+def update_cancellation_dates(df):
+    mask = df['Data anulowania'].isna() & df['Data wygaśnięcia'].notna()
+    df.loc[mask, 'Data anulowania'] = df['Data wygaśnięcia']
+    return df, mask
+
+df_calendesk, _ = update_cancellation_dates(df_calendesk)
+print("✓ Date conversion and cancellation date update completed")
 
 # Process NIP column - convert to numeric if possible, keep as text if it contains formatting
 def process_nip(nip_value):

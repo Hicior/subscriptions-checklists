@@ -2,3 +2,5 @@ ExcelFiles/
 *.xlsx
 *.md
 docs/
+.env
+scripts/
